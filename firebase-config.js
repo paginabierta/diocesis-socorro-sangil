@@ -7,10 +7,10 @@
 // este archivo, porque perdería sus claves.
 // =========================================================
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyBdD0LSvho0iQLLv-0UD30UV68ndsQq5mg",
+  authDomain: "webdiocesis-ssg.firebaseapp.com",
+  projectId: "webdiocesis-ssg",
+  storageBucket: "webdiocesis-ssg.firebasestorage.app",
+  messagingSenderId: "315735404846",
+  appId: "1:315735404846:web:a4bd878b7e305f4082cabf"
 };
