@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diócesis de Socorro y San Gil</title>
+<meta name="description" content="Somos la Iglesia que peregrina en la Diócesis de Socorro y San Gil. Parroquias, horarios de misa, trámites y actualidad.">
+<meta property="og:title" content="Diócesis de Socorro y San Gil">
+<meta property="og:locale" content="es_CO">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="encabezado"></div>
+<main id="contenido"><div class="cargando">Cargando…</div></main>
+<div id="pie"></div>
+
+<script type="module">
+import { iniciarPagina, esc, urlSegura, enlacePagina, ICONOS, ICONO_BUSCAR, fechaCorta, mesCorto, diaMes, hoyISO, hoyTexto,
+         liturgiaDeHoy, COLORES_LITURGICOS, diaDelAno, textoRico } from './comun.js';
+
+const datos = await iniciarPagina('inicio');
+const { config, paginas, noticias, eventos, documentos, parroquias } = datos;
+const t = config.textos, s = config.secciones, h = config.hoy;
+
+const portadaImg = urlSegura(t.portadaImagen);
+const tramites = paginas.filter(p => p.enInicio);
+const hoy = hoyISO();
+const proximos = eventos.filter(e => !e.fecha || e.fecha >= hoy).slice(0, 4);
+const rotacion = parroquias.length ? parroquias[diaDelAno() % parroquias.length] : null;
+const app = urlSegura(config.enlaces.app);
+
+const tarjetaNoticia = (n) => `
+  <a class="noticia" href="noticias.html?id=${encodeURIComponent(n.id)}" data-cat="${esc(n.categoria)}">
+    ${urlSegura(n.imagen) ? `<img class="foto" src="${esc(urlSegura(n.imagen))}" alt="" loading="lazy">` : `<div class="foto foto-vacia">${ICONOS.cruz}</div>`}
+    <span class="categoria">${esc({ diocesis: 'Diócesis', parroquias: 'Vida parroquial', universal: 'Iglesia universal' }[n.categoria] || n.categoria || '')}</span>
+    <h3>${esc(n.titulo)}</h3>
+    <span class="fecha">${esc(fechaCorta(n.fecha))}</span>
+  </a>`;
+
+document.getElementById('contenido').innerHTML = `
+<section class="portada">
+  ${portadaImg ? `<div class="portada-fondo" style="background-image:url('${esc(portadaImg)}')"></div>` : ''}
+  <div class="contenedor">
+    <div class="portada-texto">
+      ${t.portadaEtiqueta ? `<span class="etiqueta">${esc(t.portadaEtiqueta)}</span>` : ''}
+      <h1>${esc(t.portadaTitulo)}</h1>
+      <p>${esc(t.portadaTexto)}</p>
+    </div>
+    <form class="buscador-misa" action="parroquias.html" method="get">
+      <h2><span style="color:var(--primario)">${ICONO_BUSCAR}</span>${esc(t.buscadorTitulo)}</h2>
+      <label class="campo">Municipio o parroquia
+        <input type="search" name="q" placeholder="Ej.: San Gil, Barichara, Vado Real" list="lista-municipios">
+      </label>
+      <datalist id="lista-municipios">${[...new Set(parroquias.map(p => p.municipio))].map(m => `<option value="${esc(m)}">`).join('')}</datalist>
+      <div class="dos-col">
+        <label class="campo">Día
+          <select name="dia"><option value="hoy">Hoy</option><option value="sab">Sábado</option><option value="dom">Domingo</option><option value="todos">Cualquier día</option></select>
+        </label>
+        <label class="campo">Hora
+          <select name="franja"><option value="">Cualquiera</option><option value="manana">Mañana</option><option value="tarde">Tarde</option><option value="noche">Noche</option></select>
+        </label>
+      </div>
+      <button class="btn btn-primario" type="submit">Buscar misas</button>
+      <a class="btn btn-borde" href="parroquias.html?cerca=1&dia=hoy">${ICONOS.ubicacion.replace('width="30" height="30"', 'width="18" height="18"')} Usar mi ubicación</a>
+    </form>
+  </div>
+</section>
+
+${s.hoy ? `
+<section class="hoy" aria-label="Hoy en la Diócesis"><div class="contenedor">
+  <div class="hoy-item"><span class="punto-color" id="color-liturgico"></span><div>
+    <span class="rotulo">${esc(hoyTexto())}</span><strong id="liturgia">…</strong>
+    ${urlSegura(h.lecturasEnlace) ? `<a href="${esc(urlSegura(h.lecturasEnlace))}" target="_blank" rel="noopener">Lecturas y Evangelio de hoy</a>` : ''}
+  </div></div>
+  ${h.intencionPapa ? `<div class="hoy-item"><div><span class="rotulo">Reza con el Papa</span><strong>${esc(h.intencionPapa)}</strong>
+    ${urlSegura(h.intencionPapaEnlace) ? `<a href="${esc(urlSegura(h.intencionPapaEnlace))}" target="_blank" rel="noopener">Ver el video del mes</a>` : ''}</div></div>` : ''}
+  ${h.oracionParroquia && rotacion ? `<div class="hoy-item"><div><span class="rotulo">Hoy oramos por</span>
+    <strong><a href="parroquia.html?id=${encodeURIComponent(rotacion.id)}" style="color:inherit;text-decoration:none">${esc(rotacion.nombre)}</a></strong>
+    <span style="color:var(--suave)">${esc(rotacion.municipio)}${rotacion.parroco ? ' · Pbro. ' + esc(rotacion.parroco) : ''}</span></div></div>` : ''}
+  ${h.cafeTitulo && urlSegura(h.cafeEnlace) ? `<div class="hoy-item"><div><span class="rotulo">Para empezar el día</span><strong>${esc(h.cafeTitulo)}</strong>
+    <a href="${esc(urlSegura(h.cafeEnlace))}" target="_blank" rel="noopener">Ver la imagen de hoy</a></div></div>` : ''}
+</div></section>` : ''}
+
+${s.yoQuiero && tramites.length ? `
+<section class="seccion"><div class="contenedor">
+  <div class="cabeza-seccion"><div><h2>${esc(t.yoQuieroTitulo)}</h2><p>${esc(t.yoQuieroTexto)}</p></div></div>
+  <div class="rejilla">${tramites.map(p => `
+    <a class="tarjeta tarjeta-tramite" href="${esc(enlacePagina(p))}">${ICONOS[p.icono] || ICONOS.cruz}
+      <strong>${esc(p.titulo)}</strong><span>${esc(p.resumen)}</span></a>`).join('')}
+  </div>
+</div></section>` : ''}
+
+${(s.actualidad || s.agenda) ? `
+<section class="seccion"><div class="contenedor dos-zonas">
+  ${s.actualidad ? `<div class="zona-principal">
+    <div class="cabeza-seccion"><h2>${esc(t.actualidadTitulo)}</h2>
+      <div class="filtros" role="group" aria-label="Filtrar noticias">
+        <button class="chip activo" type="button" data-f="">Todas</button>
+        <button class="chip" type="button" data-f="diocesis">Diócesis</button>
+        <button class="chip" type="button" data-f="parroquias">Parroquias</button>
+        <button class="chip" type="button" data-f="universal">Iglesia universal</button>
+      </div></div>
+    <div class="rejilla" id="noticias-inicio" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:22px"></div>
+    <p style="margin-top:20px"><a href="noticias.html" style="font-weight:600">Ver todas las noticias</a></p>
+  </div>` : ''}
+  ${s.agenda ? `<aside class="zona-lateral"><div class="tarjeta agenda">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:26px">${esc(t.agendaTitulo)}</h2><span style="color:var(--primario)">${ICONOS.calendario}</span></div>
+    ${proximos.length ? proximos.map(e => `<div class="evento"><div class="dia-cal"><small>${esc(mesCorto(e.fecha))}</small><b>${esc(diaMes(e.fecha))}</b></div>
+      <div><strong>${esc(e.titulo)}</strong>${e.detalle || e.lugar ? `<span>${esc([e.detalle, e.lugar].filter(Boolean).join(' · '))}</span>` : ''}</div></div>`).join('')
+      : '<p style="color:var(--suave)">Pronto publicaremos las próximas actividades.</p>'}
+    ${urlSegura(config.enlaces.calendarioPublico) ? `<a href="${esc(urlSegura(config.enlaces.calendarioPublico))}" target="_blank" rel="noopener" style="font-weight:600">Ver el calendario completo</a>` : ''}
+  </div></aside>` : ''}
+</div></section>` : ''}
+
+${s.documentos && documentos.length ? `
+<section class="seccion"><div class="contenedor">
+  <div class="cabeza-seccion"><div><h2>${esc(t.documentosTitulo)}</h2><p>${esc(t.documentosTexto)}</p></div><a href="documentos.html" style="font-weight:600">Ver el archivo completo</a></div>
+  <div class="tarjeta tabla-caja"><table>
+    <thead><tr><th>Documento</th><th>Asunto</th><th>Fecha</th><th><span class="sr">Archivo</span></th></tr></thead>
+    <tbody>${documentos.slice(0, 5).map(d => `<tr><td style="font-weight:600;white-space:nowrap">${esc(d.tipo)} ${esc(d.numero)}</td><td>${esc(d.asunto)}</td>
+      <td style="color:var(--suave);white-space:nowrap">${esc(fechaCorta(d.fecha))}</td>
+      <td>${urlSegura(d.url) ? `<a href="${esc(urlSegura(d.url))}" target="_blank" rel="noopener">Abrir</a>` : ''}</td></tr>`).join('')}</tbody>
+  </table></div>
+</div></section>` : ''}
+
+${s.escucha ? `
+<section class="seccion"><div class="contenedor"><div class="banda-escucha">
+  <div style="flex:1 1 420px;min-width:0"><span class="etiqueta">${esc(t.escuchaEtiqueta)}</span><h2>${esc(t.escuchaTitulo)}</h2><p>${esc(t.escuchaTexto)}</p></div>
+  <div class="acciones">
+    ${t.escuchaBoton1 ? `<a class="btn btn-escucha" href="${esc(urlSegura(t.escuchaEnlace1) || '#')}">${esc(t.escuchaBoton1)}</a>` : ''}
+    ${t.escuchaBoton2 ? `<a class="btn btn-escucha-borde" href="${esc(urlSegura(t.escuchaEnlace2) || '#')}">${esc(t.escuchaBoton2)}</a>` : ''}
+  </div>
+</div></div></section>` : ''}
+
+${s.app ? `
+<section class="seccion"><div class="contenedor"><div class="tarjeta banda-app">
+  <div style="flex:1 1 420px;min-width:0"><h2>${esc(t.appTitulo)}</h2><p>${esc(t.appTexto)}</p></div>
+  ${app ? `<a class="btn btn-oscuro" href="${esc(app)}" target="_blank" rel="noopener">${esc(t.appBoton)}</a>` : '<span style="color:var(--suave)">Muy pronto en Google Play</span>'}
+</div></div></section>` : ''}
+`;
+
+// Noticias con filtro
+const cajaNoticias = document.getElementById('noticias-inicio');
+function mostrarNoticias(cat) {
+  if (!cajaNoticias) return;
+  const lista = noticias.filter(n => !cat || n.categoria === cat).slice(0, 3);
+  cajaNoticias.innerHTML = lista.length ? lista.map(tarjetaNoticia).join('') : '<p style="color:var(--suave)">Aún no hay noticias en esta categoría.</p>';
+}
+mostrarNoticias('');
+document.querySelectorAll('.filtros .chip').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.filtros .chip').forEach(x => x.classList.toggle('activo', x === b));
+  mostrarNoticias(b.dataset.f);
+}));
+
+// Liturgia del día
+if (s.hoy) {
+  const lit = await liturgiaDeHoy(config);
+  document.getElementById('liturgia').textContent = lit.nombre;
+  const punto = document.getElementById('color-liturgico');
+  punto.style.background = COLORES_LITURGICOS[lit.color] || COLORES_LITURGICOS.verde;
+  punto.title = 'Color litúrgico: ' + (lit.color || 'verde');
+}
+</script>
+</body>
+</html>

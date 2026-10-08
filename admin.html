@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Panel de administración · Diócesis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="estilos.css">
+<style>
+  body { background: #F4F1EE; }
+  .adm-entrada { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+  .adm-entrada form { width: 100%; max-width: 420px; padding: 32px; display: flex; flex-direction: column; gap: 14px; }
+  .adm { display: flex; min-height: 100vh; }
+  .adm-lado { width: 260px; flex-shrink: 0; background: var(--pie); color: #E9DCE2; padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .adm-lado .titulo { font-family: var(--fuente-titulos); font-size: 19px; font-weight: 700; color: #fff; padding: 4px 10px 14px; line-height: 1.2; }
+  .adm-lado small { display: block; font-family: var(--fuente-cuerpo); font-weight: 400; font-size: 12px; color: #C9B6BF; margin-top: 4px; }
+  .adm-lado button.pest { text-align: left; background: none; border: 0; color: #E9DCE2; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+  .adm-lado button.pest:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .adm-lado button.pest.activa { background: rgba(255,255,255,.16); color: #fff; }
+  .adm-lado .sep { height: 1px; background: rgba(255,255,255,.12); margin: 8px 10px; }
+  .adm-lado .grupo-t { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: #B8A2AD; padding: 10px 12px 2px; }
+  .adm-cuerpo { flex: 1; min-width: 0; padding: 28px 32px 80px; }
+  .adm-cuerpo h1 { font-size: 30px; margin-bottom: 6px; }
+  .adm-cuerpo .intro { color: var(--suave); margin-bottom: 22px; max-width: 760px; }
+  .panel { background: #fff; border: 1px solid var(--linea); border-radius: 14px; padding: 22px; margin-bottom: 18px; }
+  .panel h2 { font-size: 21px; margin-bottom: 14px; }
+  .rej-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .campo.ancho { grid-column: 1 / -1; }
+  .campo .ayuda { font-weight: 400; font-size: 13px; color: var(--suave); }
+  .campo textarea { min-height: 90px; resize: vertical; }
+  .campo-check { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; cursor: pointer; min-height: 44px; }
+  .campo-check input { width: 20px; height: 20px; accent-color: var(--primario); }
+  .fila-color { display: flex; gap: 8px; align-items: center; }
+  .fila-color input[type=color] { width: 52px; height: 46px; padding: 2px; border-radius: 10px; border: 1px solid #CFC6BE; background: #fff; flex-shrink: 0; }
+  .barra-acciones { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 4px 0 18px; }
+  .lista-items { display: flex; flex-direction: column; gap: 8px; }
+  .item { display: flex; gap: 12px; align-items: center; background: #fff; border: 1px solid var(--linea); border-radius: 12px; padding: 12px 14px; }
+  .item .info { flex: 1; min-width: 0; }
+  .item .info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .info span { font-size: 13px; color: var(--suave); }
+  .item img, .item .mini { width: 52px; height: 42px; border-radius: 8px; object-fit: cover; background: #EDE6DF; flex-shrink: 0; }
+  .btn-peq { padding: 8px 14px; min-height: 40px; font-size: 14px; border-radius: 10px; }
+  .btn-peligro { background: #fff; color: #A3241B; border-color: #E5B9B4; font-weight: 600; }
+  .btn-peligro:hover { background: #FCEDEB; color: #7F1A13; }
+  .vista-previa { max-width: 220px; max-height: 140px; border-radius: 10px; margin-top: 6px; border: 1px solid var(--linea); object-fit: contain; background: #faf8f6; }
+  .fila-archivo { display: flex; gap: 8px; }
+  .fila-archivo input[type=text] { flex: 1; min-width: 0; }
+  .misa-fila { display: grid; grid-template-columns: minmax(150px, 1.2fr) 120px minmax(120px, 1.5fr) auto; gap: 8px; margin-bottom: 8px; }
+  .misa-fila select, .misa-fila input { padding: 10px; border: 1px solid #CFC6BE; border-radius: 10px; background: var(--fondo); font-size: 15px; width: 100%; }
+  .aviso { padding: 12px 16px; border-radius: 10px; font-size: 14px; margin-bottom: 14px; }
+  .aviso.ok { background: #E7F4EC; color: #1E5B37; }
+  .aviso.mal { background: #FCEDEB; color: #7F1A13; }
+  .aviso.info { background: #FFF6DB; color: #5C4500; }
+  .muestras { display: flex; gap: 10px; flex-wrap: wrap; }
+  .muestra { border: 1px solid var(--linea); border-radius: 12px; padding: 10px 14px; background: #fff; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; }
+  .muestra:hover { border-color: var(--primario); }
+  .muestra i { display: inline-block; width: 18px; height: 18px; border-radius: 50%; margin-right: -6px; border: 2px solid #fff; }
+  .notif { position: fixed; bottom: 20px; right: 20px; background: #221C1F; color: #fff; padding: 14px 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); z-index: 100; font-weight: 600; max-width: 360px; }
+  .btn-menu-adm { display: none; }
+  @media (max-width: 900px) {
+    .adm { flex-direction: column; }
+    .adm-lado { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; }
+    .adm-lado .titulo { width: 100%; }
+    .adm-lado .sep, .adm-lado .grupo-t { display: none; }
+    .adm-cuerpo { padding: 20px 16px 80px; }
+    .misa-fila { grid-template-columns: 1fr 1fr; }
+  }
+  .cifra { font-family: var(--fuente-titulos); font-size: 34px; font-weight: 700; color: var(--primario); line-height: 1; }
+  .ayuda-formato { font-size: 13px; color: var(--suave); background: var(--fondo); border-radius: 8px; padding: 8px 10px; font-weight: 400; }
+  code { background: #F1ECE7; padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="app"><div class="cargando">Cargando el panel…</div></div>
+<script type="module" src="admin.js"></script>
+</body>
+</html>

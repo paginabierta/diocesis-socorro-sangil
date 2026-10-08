@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parroquias y misas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="encabezado"></div>
+<main id="contenido"><div class="cargando">Cargando…</div></main>
+<div id="pie"></div>
+
+<script type="module">
+import { iniciarPagina, ponerTitulo, esc, param, misasDelDia, hora12, textoDias, distanciaKm, enlaceWhatsApp, ICONO_WA, ICONOS } from './comun.js';
+
+const datos = await iniciarPagina('parroquias');
+const { config, parroquias } = datos;
+ponerTitulo('Parroquias y misas', config);
+
+const nombresDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const claveDia = { dom: 0, lun: 1, mar: 2, mie: 3, jue: 4, vie: 5, sab: 6 };
+let estado = { q: param('q'), dia: param('dia') || 'todos', franja: param('franja'), ubicacion: null };
+
+document.getElementById('contenido').innerHTML = `
+<div class="contenedor">
+  <div class="migas"><a href="index.html">Inicio</a> › Parroquias y misas</div>
+  <div class="cabecera-pagina"><h1>Parroquias y misas</h1><p>${parroquias.length} parroquias. Busca por municipio o por nombre, elige el día y encuentra la misa que te queda mejor.</p></div>
+  <form id="filtros" class="tarjeta" style="padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;align-items:end">
+    <label class="campo">Municipio o parroquia<input type="search" name="q" value="${esc(estado.q)}" placeholder="Escribe para buscar"></label>
+    <label class="campo">Día<select name="dia">
+      <option value="todos">Cualquier día</option><option value="hoy">Hoy</option>
+      ${['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'].map(k => `<option value="${k}">${nombresDia[claveDia[k]]}</option>`).join('')}
+    </select></label>
+    <label class="campo">Hora<select name="franja"><option value="">Cualquiera</option><option value="manana">Mañana (antes de 12 m.)</option><option value="tarde">Tarde (12 m. a 6 p. m.)</option><option value="noche">Noche (desde 6 p. m.)</option></select></label>
+    <button class="btn btn-borde" type="button" id="btn-ubicacion">${ICONOS.ubicacion.replace('width="30" height="30"', 'width="18" height="18"')} Más cercanas a mí</button>
+  </form>
+  <p id="resumen" style="color:var(--suave);margin:18px 0 12px" aria-live="polite"></p>
+  <div id="resultados" style="display:flex;flex-direction:column;gap:12px"></div>
+</div>`;
+
+const form = document.getElementById('filtros');
+form.dia.value = estado.dia;
+form.franja.value = estado.franja;
+
+function enFranja(hora, franja) {
+  if (!franja) return true;
+  const h = Number((hora || '0').split(':')[0]);
+  return franja === 'manana' ? h < 12 : franja === 'tarde' ? (h >= 12 && h < 18) : h >= 18;
+}
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function pintar() {
+  const q = norm(estado.q);
+  const dia = estado.dia === 'hoy' ? new Date().getDay() : (estado.dia in claveDia ? claveDia[estado.dia] : null);
+  let lista = parroquias.filter(p => !q || norm(p.nombre + ' ' + p.municipio + ' ' + p.parroco).includes(q)).map(p => {
+    const misas = dia === null ? (p.misas || []) : misasDelDia(p, dia);
+    const enHora = misas.filter(m => enFranja(m.hora, estado.franja));
+    const dist = estado.ubicacion && p.lat && p.lng ? distanciaKm(estado.ubicacion, { lat: Number(p.lat), lng: Number(p.lng) }) : null;
+    return { p, misas: enHora, tieneHorario: (p.misas || []).length > 0, dist };
+  });
+  if (dia !== null || estado.franja) lista.sort((a, b) => (b.misas.length > 0) - (a.misas.length > 0));
+  if (estado.ubicacion) lista.sort((a, b) => (a.dist ?? 1e9) - (b.dist ?? 1e9));
+
+  const conMisa = lista.filter(x => x.misas.length).length;
+  const etiquetaDia = dia === null ? '' : (estado.dia === 'hoy' ? 'hoy' : 'el ' + nombresDia[dia].toLowerCase());
+  document.getElementById('resumen').textContent = `${lista.length} parroquia${lista.length === 1 ? '' : 's'}`
+    + (etiquetaDia ? ` · ${conMisa} con misa ${etiquetaDia}${estado.franja ? ' en ese horario' : ''}` : '')
+    + (estado.ubicacion ? ' · ordenadas por cercanía' : '');
+
+  document.getElementById('resultados').innerHTML = lista.length ? lista.map(({ p, misas, tieneHorario, dist }) => {
+    const wa = enlaceWhatsApp(p.whatsapp);
+    const horas = dia === null
+      ? misas.slice(0, 6).map(m => `<span class="hora">${esc(textoDias(m.dias))} ${esc(hora12(m.hora))}</span>`).join('')
+      : misas.map(m => `<span class="hora">${esc(hora12(m.hora))}${m.lugar ? ' · ' + esc(m.lugar) : ''}</span>`).join('');
+    return `<article class="tarjeta resultado">
+      <div style="min-width:0;flex:1 1 320px">
+        <span class="categoria">${esc(p.municipio)}${dist !== null ? ` · <span class="distancia">a ${dist < 1 ? Math.round(dist * 1000) + ' m' : dist.toFixed(1) + ' km'}</span>` : ''}</span>
+        <h3><a href="parroquia.html?id=${encodeURIComponent(p.id)}" style="color:inherit;text-decoration:none">${esc(p.nombre)}</a></h3>
+        ${p.parroco ? `<div style="color:var(--suave);font-size:15px">Párroco: Pbro. ${esc(p.parroco)}</div>` : ''}
+        <div class="horas">${horas || `<span style="color:var(--suave);font-size:14px">${tieneHorario ? 'Sin misa en el día u hora elegidos' : 'Horarios por confirmar'}</span>`}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${wa ? `<a class="btn btn-whatsapp" href="${wa}" target="_blank" rel="noopener" aria-label="WhatsApp de ${esc(p.nombre)}">${ICONO_WA}</a>` : ''}
+        <a class="btn btn-borde" href="parroquia.html?id=${encodeURIComponent(p.id)}">Ver parroquia</a>
+      </div>
+    </article>`;
+  }).join('') : '<div class="tarjeta vacio">No encontramos parroquias con esa búsqueda.</div>';
+}
+
+form.addEventListener('input', () => { estado.q = form.q.value; estado.dia = form.dia.value; estado.franja = form.franja.value; pintar(); });
+form.addEventListener('submit', e => e.preventDefault());
+
+function pedirUbicacion() {
+  const btn = document.getElementById('btn-ubicacion');
+  if (!navigator.geolocation) { alert('Tu navegador no permite conocer la ubicación.'); return; }
+  btn.textContent = 'Buscando tu ubicación…';
+  navigator.geolocation.getCurrentPosition(pos => {
+    estado.ubicacion = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    btn.textContent = 'Ordenadas por cercanía';
+    if (!parroquias.some(p => p.lat && p.lng)) document.getElementById('resumen').textContent = 'Las parroquias aún no tienen ubicación registrada.';
+    pintar();
+  }, () => { btn.textContent = 'Más cercanas a mí'; alert('No pudimos obtener tu ubicación. Revisa el permiso del navegador.'); }, { timeout: 12000 });
+}
+document.getElementById('btn-ubicacion').addEventListener('click', pedirUbicacion);
+pintar();
+if (param('cerca')) pedirUbicacion();
+</script>
+</body>
+</html>

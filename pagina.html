@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Página</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="encabezado"></div>
+<main id="contenido"><div class="cargando">Cargando…</div></main>
+<div id="pie"></div>
+
+<script type="module">
+import { iniciarPagina, ponerTitulo, esc, param, urlSegura, textoRico, enlacePagina, ICONOS } from './comun.js';
+
+const datos = await iniciarPagina('pagina');
+const { config, paginas } = datos;
+const p = paginas.find(x => x.id === param('id'));
+const cont = document.getElementById('contenido');
+const GRUPOS = { tramites: 'Trámites', diocesis: 'Nuestra Diócesis', instituciones: 'Instituciones diocesanas' };
+
+if (!p) {
+  cont.innerHTML = '<div class="contenedor"><div class="cargando">No encontramos esta página. <a href="index.html">Volver al inicio</a></div></div>';
+} else if (urlSegura(p.enlace) && !p.contenido) {
+  location.replace(urlSegura(p.enlace));
+} else {
+  ponerTitulo(p.titulo, config);
+  const hermanas = paginas.filter(x => x.grupo === p.grupo && x.id !== p.id);
+  cont.innerHTML = `
+  <div class="contenedor">
+    <div class="migas"><a href="index.html">Inicio</a>${GRUPOS[p.grupo] ? ' › ' + GRUPOS[p.grupo] : ''} › ${esc(p.titulo)}</div>
+    <div class="dos-zonas" style="padding-top:8px">
+      <article class="zona-principal">
+        <div class="cabecera-pagina"><h1>${esc(p.titulo)}</h1>${p.resumen ? `<p>${esc(p.resumen)}</p>` : ''}</div>
+        ${urlSegura(p.imagen) ? `<img src="${esc(urlSegura(p.imagen))}" alt="" style="width:100%;border-radius:16px;margin-bottom:26px;max-height:460px;object-fit:cover">` : ''}
+        <div class="texto-rico">${textoRico(p.contenido)}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:24px">
+          ${urlSegura(p.adjunto) ? `<a class="btn btn-borde" href="${esc(urlSegura(p.adjunto))}" target="_blank" rel="noopener">${ICONOS.documento.replace('width="30" height="30"', 'width="18" height="18"')} ${esc(p.adjuntoTexto || 'Descargar documento')}</a>` : ''}
+          ${urlSegura(p.enlace) ? `<a class="btn btn-primario" href="${esc(urlSegura(p.enlace))}">Ir al sitio</a>` : ''}
+        </div>
+        ${p.grupo === 'tramites' ? `<div class="tarjeta caja" style="margin-top:32px;max-width:760px"><h2 style="font-size:22px">¿Necesitas ayuda?</h2>
+          <p style="color:var(--suave);margin-bottom:14px">El despacho de tu parroquia te orienta en este trámite.</p>
+          <a class="btn btn-primario" href="parroquias.html">Buscar mi parroquia</a></div>` : ''}
+      </article>
+      ${hermanas.length ? `<aside class="zona-lateral"><div class="tarjeta caja" style="position:sticky;top:96px">
+        <h2 style="font-size:20px">${esc(GRUPOS[p.grupo] || 'Ver también')}</h2>
+        ${hermanas.map(x => `<div class="dato"><a href="${esc(enlacePagina(x))}">${esc(x.titulo)}</a></div>`).join('')}
+      </div></aside>` : ''}
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>

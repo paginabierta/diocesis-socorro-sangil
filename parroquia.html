@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parroquia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="encabezado"></div>
+<main id="contenido"><div class="cargando">Cargando…</div></main>
+<div id="pie"></div>
+
+<script type="module">
+import { iniciarPagina, ponerTitulo, esc, param, urlSegura, textoRico, OPCIONES_DIAS, hora12, distanciaKm, enlaceWhatsApp, ICONO_WA, ICONOS } from './comun.js';
+
+const datos = await iniciarPagina('parroquias');
+const { config, parroquias } = datos;
+const p = parroquias.find(x => x.id === param('id'));
+const cont = document.getElementById('contenido');
+
+if (!p) {
+  cont.innerHTML = '<div class="contenedor"><div class="cargando">No encontramos esta parroquia. <a href="parroquias.html">Ver todas las parroquias</a></div></div>';
+} else {
+  ponerTitulo(p.nombre + ' · ' + p.municipio, config);
+  const foto = urlSegura(p.foto);
+  const wa = enlaceWhatsApp(p.whatsapp);
+  const tieneCoord = p.lat && p.lng;
+  const destino = tieneCoord ? `${p.lat},${p.lng}` : encodeURIComponent(`${p.nombre}, ${p.municipio}, Santander, Colombia`);
+  const comoLlegar = `https://www.google.com/maps/dir/?api=1&destination=${destino}`;
+  const mapaSrc = tieneCoord ? `https://maps.google.com/maps?q=${p.lat},${p.lng}&z=15&output=embed` : '';
+
+  // Misas agrupadas por días, en el orden de la lista de opciones
+  const grupos = OPCIONES_DIAS.map(([v, t]) => ({ t, misas: (p.misas || []).filter(m => m.dias === v).sort((a, b) => a.hora.localeCompare(b.hora)) })).filter(g => g.misas.length);
+
+  const cercanas = parroquias.filter(x => x.id !== p.id).map(x => ({
+    x, d: tieneCoord && x.lat && x.lng ? distanciaKm({ lat: +p.lat, lng: +p.lng }, { lat: +x.lat, lng: +x.lng }) : (x.municipio === p.municipio ? 0 : null)
+  })).filter(o => o.d !== null).sort((a, b) => a.d - b.d).slice(0, 4);
+
+  const accion = (titulo, texto, mensaje) => wa
+    ? `<a class="tarjeta" href="${enlaceWhatsApp(p.whatsapp, mensaje)}" target="_blank" rel="noopener" style="display:flex;flex-direction:column;gap:4px;padding:16px;text-decoration:none;color:var(--texto)"><strong>${titulo}</strong><span style="font-size:14px;color:var(--suave)">${texto}</span></a>`
+    : '';
+
+  cont.innerHTML = `
+  <div class="contenedor">
+    <div class="migas"><a href="index.html">Inicio</a> › <a href="parroquias.html">Parroquias</a> › ${esc(p.municipio)}</div>
+    <section style="display:flex;flex-wrap:wrap;gap:32px;align-items:stretch;padding-top:20px">
+      <div style="flex:1 1 480px;min-width:0">
+        ${foto ? `<img src="${esc(foto)}" alt="Templo de la ${esc(p.nombre)}" style="width:100%;height:100%;min-height:300px;max-height:460px;object-fit:cover;border-radius:18px">`
+               : `<div class="foto foto-vacia" style="min-height:300px;height:100%;border-radius:18px">${ICONOS.casa}</div>`}
+      </div>
+      <div style="flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:14px;justify-content:center">
+        <span class="etiqueta" style="color:var(--acento-texto)">${esc(p.municipio)} · Santander</span>
+        <h1 style="font-size:clamp(32px,4.4vw,46px)">${esc(p.nombre)}</h1>
+        ${p.descripcion ? `<p style="color:var(--suave);font-size:17px">${esc(p.descripcion)}</p>` : ''}
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+          ${wa ? `<a class="btn btn-whatsapp" href="${wa}" target="_blank" rel="noopener">${ICONO_WA} Escribir por WhatsApp</a>` : ''}
+          <a class="btn btn-borde" href="${comoLlegar}" target="_blank" rel="noopener">Cómo llegar</a>
+          <button class="btn btn-borde" type="button" id="compartir">Compartir</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="dos-zonas" style="padding-top:40px">
+      <div class="zona-principal" style="display:flex;flex-direction:column;gap:24px">
+        <div class="tarjeta caja"><h2>Horarios de misa</h2>
+          ${grupos.length ? `<div class="misas-lista">${grupos.map(g => `<div class="misa"><strong>${esc(g.t)}</strong>
+            ${g.misas.map(m => `<span style="display:block">${esc(hora12(m.hora))}${m.lugar ? ' · ' + esc(m.lugar) : ''}</span>`).join('')}</div>`).join('')}</div>`
+            : '<p style="color:var(--suave)">Horarios por confirmar. Comunícate con el despacho parroquial.</p>'}
+        </div>
+        ${wa ? `<div class="tarjeta caja"><h2>Desde la parroquia puedes</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+            ${accion('Ofrecer una intención', 'Se envía por WhatsApp al despacho', 'Buenos días. Quisiera ofrecer una intención de misa por: ')}
+            ${accion('Pedir una partida', 'Bautismo, confirmación o matrimonio', 'Buenos días. Quisiera solicitar una partida de: ')}
+            ${accion('Preparar un sacramento', 'Requisitos y fechas de charlas', 'Buenos días. Quisiera información para preparar el sacramento de: ')}
+            ${accion('Hablar con el párroco', 'Confesión y acompañamiento', 'Buenos días. Quisiera hablar con el padre. ')}
+          </div></div>` : ''}
+        ${p.historia ? `<div class="tarjeta caja"><h2>Nuestra parroquia</h2><div class="texto-rico">${textoRico(p.historia)}</div></div>` : ''}
+      </div>
+
+      <aside class="zona-lateral" style="display:flex;flex-direction:column;gap:20px">
+        ${p.parroco ? `<a class="tarjeta persona" href="sacerdotes.html?q=${encodeURIComponent(p.parroco)}" style="text-decoration:none;color:var(--texto)">
+          ${urlSegura(p.fotoParroco) ? `<img class="avatar" src="${esc(urlSegura(p.fotoParroco))}" alt="">` : `<span class="avatar">${esc(p.parroco.trim().charAt(0))}</span>`}
+          <div><span class="rotulo">Párroco</span><strong>Pbro. ${esc(p.parroco)}</strong></div></a>` : ''}
+        <div class="tarjeta caja">
+          ${p.despacho ? `<div class="dato"><span class="rotulo">Despacho parroquial</span><div>${esc(p.despacho).replace(/\n/g, '<br>')}</div></div>` : ''}
+          ${p.fiesta ? `<div class="dato"><span class="rotulo">Fiesta patronal</span><div>${esc(p.fiesta)}</div></div>` : ''}
+          ${p.veredas ? `<div class="dato"><span class="rotulo">Veredas y capillas</span><div>${esc(p.veredas)}</div></div>` : ''}
+          ${p.direccion ? `<div class="dato"><span class="rotulo">Dirección</span><div>${esc(p.direccion)}</div></div>` : ''}
+          ${p.telefono ? `<div class="dato"><span class="rotulo">Teléfono</span><div><a href="tel:${esc(p.telefono.replace(/\s/g, ''))}">${esc(p.telefono)}</a></div></div>` : ''}
+          ${p.correo ? `<div class="dato"><span class="rotulo">Correo</span><div><a href="mailto:${esc(p.correo)}">${esc(p.correo)}</a></div></div>` : ''}
+          ${urlSegura(p.facebook) ? `<div class="dato"><span class="rotulo">Redes</span><div><a href="${esc(urlSegura(p.facebook))}" target="_blank" rel="noopener">Página de Facebook</a></div></div>` : ''}
+          ${!(p.despacho || p.fiesta || p.veredas || p.direccion || p.telefono || p.correo || p.facebook) ? '<p style="color:var(--suave)">Información de contacto en actualización.</p>' : ''}
+        </div>
+        ${mapaSrc ? `<iframe class="mapa" src="${mapaSrc}" title="Mapa de ubicación" loading="lazy"></iframe>` : ''}
+        ${cercanas.length ? `<div class="tarjeta caja"><h2 style="font-size:20px">Parroquias cercanas</h2>
+          ${cercanas.map(({ x }) => `<div class="dato"><a href="parroquia.html?id=${encodeURIComponent(x.id)}">${esc(x.nombre)}</a> <span style="color:var(--suave);font-size:14px">· ${esc(x.municipio)}</span></div>`).join('')}</div>` : ''}
+      </aside>
+    </section>
+  </div>`;
+
+  document.getElementById('compartir').addEventListener('click', async () => {
+    const data = { title: p.nombre, text: `${p.nombre} · ${p.municipio}`, url: location.href };
+    if (navigator.share) { try { await navigator.share(data); } catch (e) { /* cancelado */ } }
+    else { try { await navigator.clipboard.writeText(location.href); alert('Enlace copiado.'); } catch (e) { prompt('Copia este enlace:', location.href); } }
+  });
+}
+</script>
+</body>
+</html>

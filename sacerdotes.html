@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sacerdotes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="encabezado"></div>
+<main id="contenido"><div class="cargando">Cargando…</div></main>
+<div id="pie"></div>
+
+<script type="module">
+import { iniciarPagina, ponerTitulo, esc, param, urlSegura } from './comun.js';
+
+const datos = await iniciarPagina('sacerdotes');
+const { config, sacerdotes } = datos;
+ponerTitulo('Sacerdotes', config);
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+document.getElementById('contenido').innerHTML = `
+<div class="contenedor">
+  <div class="migas"><a href="index.html">Inicio</a> › Sacerdotes</div>
+  <div class="cabecera-pagina"><h1>Nuestros sacerdotes</h1><p>Presbiterio de la Diócesis. Busca por nombre, cargo o municipio.</p></div>
+  <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:20px">
+    <label class="campo" style="flex:1 1 320px">Buscar<input type="search" id="buscar" value="${esc(param('q'))}" placeholder="Ej.: Barichara, emérito, Vicario"></label>
+    <div class="filtros" role="group" aria-label="Filtrar">
+      <button class="chip activo" type="button" data-f="">Todos</button>
+      <button class="chip" type="button" data-f="parroco">Párrocos</button>
+      <button class="chip" type="button" data-f="emerito">Eméritos</button>
+    </div>
+  </div>
+  <p id="total" style="color:var(--suave);margin-bottom:12px" aria-live="polite"></p>
+  <div class="rejilla" id="lista" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px"></div>
+</div>`;
+
+let filtro = '';
+function pintar() {
+  const q = norm(document.getElementById('buscar').value);
+  const lista = sacerdotes.filter(s => {
+    const txt = norm(s.nombre + ' ' + s.cargo + ' ' + s.municipio);
+    if (q && !q.split(/\s+/).every(w => txt.includes(w))) return false;
+    if (filtro === 'parroco' && !norm(s.cargo).includes('parroco')) return false;
+    if (filtro === 'emerito' && !norm(s.cargo).includes('emerito')) return false;
+    return true;
+  });
+  document.getElementById('total').textContent = `${lista.length} sacerdote${lista.length === 1 ? '' : 's'}`;
+  document.getElementById('lista').innerHTML = lista.map(s => `
+    <div class="tarjeta persona">
+      ${urlSegura(s.foto) ? `<img class="avatar" src="${esc(urlSegura(s.foto))}" alt="" loading="lazy">` : `<span class="avatar">${esc(s.nombre.charAt(0))}</span>`}
+      <div style="min-width:0"><strong>Pbro. ${esc(s.nombre)}</strong>
+        ${s.cargo ? `<span style="display:block">${esc(s.cargo)}</span>` : ''}
+        ${s.municipio ? `<span style="display:block">${esc(s.municipio)}</span>` : ''}</div>
+    </div>`).join('') || '<div class="tarjeta vacio">Sin resultados.</div>';
+}
+document.getElementById('buscar').addEventListener('input', pintar);
+document.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+  filtro = b.dataset.f;
+  document.querySelectorAll('.chip').forEach(x => x.classList.toggle('activo', x === b));
+  pintar();
+}));
+pintar();
+</script>
+</body>
+</html>

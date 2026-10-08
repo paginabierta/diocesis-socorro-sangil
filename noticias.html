@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Actualidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="encabezado"></div>
+<main id="contenido"><div class="cargando">Cargando…</div></main>
+<div id="pie"></div>
+
+<script type="module">
+import { iniciarPagina, ponerTitulo, esc, param, urlSegura, textoRico, fechaLarga, fechaCorta, ICONOS, modoDemo, fb } from './comun.js';
+
+const datos = await iniciarPagina('noticias');
+const { config, noticias } = datos;
+const cont = document.getElementById('contenido');
+const CATS = { diocesis: 'Diócesis', parroquias: 'Vida parroquial', universal: 'Iglesia universal' };
+const id = param('id');
+
+const tarjeta = (n) => `
+  <a class="noticia" href="noticias.html?id=${encodeURIComponent(n.id)}">
+    ${urlSegura(n.imagen) ? `<img class="foto" src="${esc(urlSegura(n.imagen))}" alt="" loading="lazy">` : `<div class="foto foto-vacia">${ICONOS.cruz}</div>`}
+    <span class="categoria">${esc(CATS[n.categoria] || n.categoria || '')}</span>
+    <h3>${esc(n.titulo)}</h3>
+    ${n.resumen ? `<p style="color:var(--suave);font-size:15px">${esc(n.resumen)}</p>` : ''}
+    <span class="fecha">${esc(fechaCorta(n.fecha))}</span>
+  </a>`;
+
+if (id) {
+  let n = noticias.find(x => x.id === id);
+  if ((!n || n.parcial) && !modoDemo) {
+    try { const { db, fs } = await fb(); const s = await fs.getDoc(fs.doc(db, 'noticias', id)); if (s.exists() && s.data().visible !== false) n = { id, ...s.data() }; }
+    catch (e) { console.error(e); }
+  }
+  if (!n) {
+    cont.innerHTML = '<div class="contenedor"><div class="cargando">No encontramos esta noticia. <a href="noticias.html">Ver todas</a></div></div>';
+  } else {
+    ponerTitulo(n.titulo, config);
+    const otras = noticias.filter(x => x.id !== n.id).slice(0, 3);
+    cont.innerHTML = `
+    <article class="contenedor" style="max-width:860px">
+      <div class="migas"><a href="index.html">Inicio</a> › <a href="noticias.html">Actualidad</a></div>
+      <div class="cabecera-pagina">
+        <span class="categoria">${esc(CATS[n.categoria] || '')}</span>
+        <h1>${esc(n.titulo)}</h1>
+        ${n.resumen ? `<p>${esc(n.resumen)}</p>` : ''}
+        <p style="font-size:15px">${esc(fechaLarga(n.fecha))}${n.autor ? ' · ' + esc(n.autor) : ''}</p>
+      </div>
+      ${urlSegura(n.imagen) ? `<img src="${esc(urlSegura(n.imagen))}" alt="" style="width:100%;border-radius:16px;margin-bottom:28px;max-height:520px;object-fit:cover">` : ''}
+      <div class="texto-rico">${textoRico(n.contenido)}</div>
+      ${urlSegura(n.adjunto) ? `<p style="margin-top:20px"><a class="btn btn-borde" href="${esc(urlSegura(n.adjunto))}" target="_blank" rel="noopener">${ICONOS.documento.replace('width="30" height="30"', 'width="18" height="18"')} Descargar documento</a></p>` : ''}
+      <p style="margin-top:28px"><button class="btn btn-borde" type="button" id="compartir">Compartir esta noticia</button></p>
+    </article>
+    ${otras.length ? `<section class="seccion"><div class="contenedor"><div class="cabeza-seccion"><h2>Más noticias</h2></div>
+      <div class="rejilla" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px">${otras.map(tarjeta).join('')}</div></div></section>` : ''}`;
+    document.getElementById('compartir').addEventListener('click', async () => {
+      if (navigator.share) { try { await navigator.share({ title: n.titulo, url: location.href }); } catch (e) { /* cancelado */ } }
+      else { try { await navigator.clipboard.writeText(location.href); alert('Enlace copiado.'); } catch (e) { prompt('Copia este enlace:', location.href); } }
+    });
+  }
+} else {
+  ponerTitulo('Actualidad', config);
+  let cat = param('cat');
+  cont.innerHTML = `
+  <div class="contenedor">
+    <div class="migas"><a href="index.html">Inicio</a> › Actualidad</div>
+    <div class="cabecera-pagina"><h1>${esc(config.textos.actualidadTitulo)}</h1><p>Lo que pasa en nuestras parroquias, en la Diócesis y en la Iglesia universal.</p></div>
+    <div class="filtros" role="group" aria-label="Filtrar noticias" style="margin-bottom:24px">
+      <button class="chip" type="button" data-f="">Todas</button>
+      ${Object.entries(CATS).map(([k, v]) => `<button class="chip" type="button" data-f="${k}">${v}</button>`).join('')}
+    </div>
+    <div class="rejilla" id="lista" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:28px 22px"></div>
+  </div>`;
+  const pintar = () => {
+    document.querySelectorAll('.chip').forEach(x => x.classList.toggle('activo', x.dataset.f === cat));
+    const l = noticias.filter(n => !cat || n.categoria === cat);
+    document.getElementById('lista').innerHTML = l.length ? l.map(tarjeta).join('') : '<div class="tarjeta vacio">Aún no hay noticias en esta categoría.</div>';
+  };
+  document.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => { cat = b.dataset.f; pintar(); }));
+  pintar();
+}
+</script>
+</body>
+</html>

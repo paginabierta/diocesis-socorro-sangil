@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="encabezado"></div>
+<main id="contenido"><div class="cargando">Cargando…</div></main>
+<div id="pie"></div>
+
+<script type="module">
+import { iniciarPagina, ponerTitulo, esc, urlSegura, fechaCorta } from './comun.js';
+
+const datos = await iniciarPagina('documentos');
+const { config, documentos } = datos;
+ponerTitulo('Documentos', config);
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const anos = [...new Set(documentos.map(d => (d.fecha || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+const tipos = [...new Set(documentos.map(d => d.tipo).filter(Boolean))].sort();
+
+document.getElementById('contenido').innerHTML = `
+<div class="contenedor">
+  <div class="migas"><a href="index.html">Inicio</a> › Documentos</div>
+  <div class="cabecera-pagina"><h1>${esc(config.textos.documentosTitulo)}</h1><p>${esc(config.textos.documentosTexto)}</p></div>
+  <form id="f" class="tarjeta" style="padding:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px">
+    <label class="campo">Buscar<input type="search" name="q" placeholder="Número o asunto"></label>
+    <label class="campo">Año<select name="ano"><option value="">Todos</option>${anos.map(a => `<option>${a}</option>`).join('')}</select></label>
+    <label class="campo">Tipo<select name="tipo"><option value="">Todos</option>${tipos.map(t => `<option>${esc(t)}</option>`).join('')}</select></label>
+  </form>
+  <div class="tarjeta tabla-caja"><table>
+    <thead><tr><th>Documento</th><th>Asunto</th><th>Fecha</th><th><span class="sr">Archivo</span></th></tr></thead>
+    <tbody id="filas"></tbody>
+  </table></div>
+</div>`;
+
+const f = document.getElementById('f');
+function pintar() {
+  const q = norm(f.q.value);
+  const l = documentos.filter(d => (!q || norm(`${d.tipo} ${d.numero} ${d.asunto}`).includes(q))
+    && (!f.ano.value || (d.fecha || '').startsWith(f.ano.value)) && (!f.tipo.value || d.tipo === f.tipo.value));
+  document.getElementById('filas').innerHTML = l.length ? l.map(d => `<tr>
+    <td style="font-weight:600;white-space:nowrap">${esc(d.tipo)} ${esc(d.numero)}</td><td>${esc(d.asunto)}</td>
+    <td style="color:var(--suave);white-space:nowrap">${esc(fechaCorta(d.fecha))}</td>
+    <td>${urlSegura(d.url) ? `<a href="${esc(urlSegura(d.url))}" target="_blank" rel="noopener">Abrir PDF</a>` : ''}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="vacio">No hay documentos con esos filtros.</td></tr>';
+}
+f.addEventListener('input', pintar);
+f.addEventListener('submit', e => e.preventDefault());
+pintar();
+</script>
+</body>
+</html>
